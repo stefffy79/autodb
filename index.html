@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoDB</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        :root { --blue: #1e3a8a; --sky: #3b82f6; --bg: #f1f5f9; --red: #ef4444; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; color: #1e293b; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .hidden { display: none !important; }
+        
+        /* Majuscule doar pentru conținutul aplicației, NU pentru login */
+        #app-content, #app-nav { text-transform: uppercase; }
+        #app-content input, #app-content textarea { text-transform: uppercase; }
+
+        nav { background: var(--blue); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .nav-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; }
+        .nav-btn.active { background: var(--sky); }
+
+        input, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; font-family: inherit; }
+        .btn-main { background: var(--sky); color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: 600; cursor: pointer; text-transform: uppercase; }
+
+        .table-res { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
+        .table-res th { text-align: left; padding: 15px; background: #f8fafc; color: #64748b; font-size: 11px; }
+        .table-res tr { border-bottom: 1px solid #edf2f7; cursor: pointer; }
+        .table-res td { padding: 15px; font-size: 14px; color: #1e293b; }
+
+        .details-row { background: #f8fafc !important; border-bottom: 3px solid var(--sky) !important; }
+        .details-card { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .detail-item { display: flex; flex-direction: column; }
+        .detail-label { font-size: 10px; color: #64748b; margin-bottom: 4px; font-weight: 800; }
+        .detail-value { font-size: 15px; font-weight: 600; color: #1e293b; }
+
+        .log-item { font-family: monospace; font-size: 12px; padding: 8px; border-bottom: 1px solid #eee; text-transform: none; }
+        
+        /* Stil pentru checkbox-ul de login */
+        .rem-box { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 10px 0; color: #64748b; cursor: pointer; }
+        .rem-box input { width: auto; margin: 0; }
+
+        @media (max-width: 600px) { .hide-m { display: none; } }
+    </style>
+</head>
+<body>
+
+<nav id="app-nav" class="hidden">
+    <div style="font-weight: 800;"><i class="fas fa-car-side"></i> AUTODB </div>
+    <div style="display:flex; gap:8px;">
+        <button class="nav-btn active" id="btn-s" onclick="showT('s-tab')"><i class="fas fa-search"></i></button>
+        <button class="nav-btn" id="btn-a" onclick="showT('a-tab')"><i class="fas fa-plus"></i></button>
+        <button id="btn-adm" class="nav-btn hidden" onclick="showT('adm-tab')"><i class="fas fa-user-shield"></i></button>
+        <button class="nav-btn" onclick="logout()" style="color:#fca5a5"><i class="fas fa-power-off"></i></button>
+    </div>
+</nav>
+
+<div class="container">
+    <div id="auth-box" class="card" style="max-width:400px; margin: 40px auto; text-align:center;">
+        <h2 style="margin-top:0">Acces Sistem</h2>
+        <div id="reg-fields" class="hidden"><input type="text" id="rname" placeholder="Nume Complet"></div>
+        <input type="text" id="auser" placeholder="Utilizator">
+        <input type="password" id="apass" placeholder="Parolă">
+        
+        <label class="rem-box">
+            <input type="checkbox" id="arem"> Rămâi conectat
+        </label>
+
+        <button class="btn-main" onclick="handleAuth()">Conectare</button>
+        <p onclick="toggleA()" id="aswitch" style="font-size:11px; color:var(--sky); cursor:pointer; margin-top:20px; font-weight:bold; text-transform: uppercase;">Înregistrare cont nou</p>
+    </div>
+
+    <div id="app-content" class="hidden">
+        <div id="s-tab" class="tab-p">
+            <h3>CĂUTARE VEHICUL</h3>
+            <div class="card" style="border: 2px solid var(--sky); padding: 10px;">
+                <input type="text" id="q-search" oninput="doSearch()" placeholder="CAUTĂ DUPĂ ORICARE DINTRE CRITERII ..." style="border:none; margin:0;">
+            </div>
+            <table class="table-res">
+                <thead><tr><th>MARCĂ</th><th class="hide-m">CULOARE</th><th>NUMĂR</th><th>ȚARĂ</th></tr></thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+
+        <div id="a-tab" class="tab-p hidden card">
+            <h3>ADĂUGARE VEHICUL</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <input type="text" id="f-ma" placeholder="MARCĂ">
+                <input type="text" id="f-mo" placeholder="MODEL">
+                <input type="text" id="f-cu" placeholder="CULOARE">
+                <input type="text" id="f-nr" placeholder="NR. ÎNMATRICULARE">
+                <input type="text" id="f-vi" placeholder="VIN">
+                <input type="text" id="f-ta" placeholder="ȚARĂ">
+            </div>
+            <textarea id="f-me" placeholder="MENȚIUNI..." rows="3"></textarea>
+            <button class="btn-main" onclick="saveCar()">SALVEAZĂ</button>
+        </div>
+
+        <div id="adm-tab" class="tab-p hidden">
+            <div class="card">
+                <h3>UTILIZATORI</h3>
+                <div id="admin-users-list"></div>
+            </div>
+            <div class="card">
+                <h3>JURNAL ACTIVITATE</h3>
+                <div id="admin-logs-list" style="max-height: 350px; overflow-y: auto; background: #f8fafc; border-radius: 8px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CONFIG = {
+        URL: "https://api.jsonbin.io/v3/b/69960587d0ea881f40c4a0e0",
+        KEY: "$2a$10$xgQ/MpgLbr1aHYrIDEFowea8adWq3rtRV4yeM8Pwhzu9pRJNR5lMe"
+    };
+
+    let db = { users: [], masini: [], logs: [] };
+    let currentUser = null;
+
+    const U = (t) => t ? t.toString().toUpperCase() : "-";
+
+    async function loadDB() {
+        try {
+            const r = await fetch(CONFIG.URL, { headers: { "X-Master-Key": CONFIG.KEY, "X-Bin-Meta": "false" } });
+            db = await r.json();
+            if(!db.logs) db.logs = [];
+        } catch (e) { console.error("Error DB"); }
+    }
+
+    async function saveDB() {
+        await fetch(CONFIG.URL, {
+            method: 'PUT',
+            headers: { "Content-Type": "application/json", "X-Master-Key": CONFIG.KEY },
+            body: JSON.stringify(db)
+        });
+    }
+
+    function addLog(msg) {
+        db.logs.unshift({ t: new Date().toLocaleString('ro-RO'), u: U(currentUser ? currentUser.u : 'SISTEM'), m: U(msg) });
+        if(db.logs.length > 100) db.logs.pop();
+    }
+
+    window.onload = async () => {
+        await loadDB();
+        // Verificăm dacă există o sesiune salvată
+        const saved = localStorage.getItem('autodb_session');
+        if (saved) {
+            const sessionData = JSON.parse(saved);
+            const found = db.users.find(x => (x.u === sessionData.u || x.user === sessionData.user) && (x.p === sessionData.p || x.pass === sessionData.pass));
+            if (found) login(found, false); // Logare automată fără a re-salva (deja există)
+        }
+    };
+
+    function toggleA() { document.getElementById('reg-fields').classList.toggle('hidden'); }
+
+    async function handleAuth() {
+        const u = document.getElementById('auser').value.trim();
+        const p = document.getElementById('apass').value.trim();
+        const rem = document.getElementById('arem').checked;
+
+        if (!document.getElementById('reg-fields').classList.contains('hidden')) {
+            const n = document.getElementById('rname').value.trim();
+            db.users.push({ n, u, p, role: (db.users.length === 0 ? 'admin' : 'user') });
+            addLog(`CONT NOU: ${u}`);
+            await saveDB(); alert("CONT CREAT!"); toggleA();
+        } else {
+            const found = db.users.find(x => (x.u === u || x.user === u) && (x.p === p || x.pass === p));
+            if (found) { 
+                login(found, rem); 
+                addLog("AUTENTIFICARE REUȘITĂ"); 
+                await saveDB(); 
+            } else alert("DATE INCORECTE!");
+        }
+    }
+
+    function login(uD, remember) {
+        currentUser = uD;
+        if (remember) {
+            localStorage.setItem('autodb_session', JSON.stringify(uD));
+        }
+        document.getElementById('auth-box').classList.add('hidden');
+        document.getElementById('app-nav').classList.remove('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        if (uD.role === 'admin') document.getElementById('btn-adm').classList.remove('hidden');
+    }
+
+    function doSearch() {
+        const q = document.getElementById('q-search').value.toLowerCase().trim();
+        const body = document.getElementById('tbody');
+        body.innerHTML = "";
+        if(!q) return;
+
+        db.masini.filter(m => Object.values(m).some(v => v && v.toString().toLowerCase().includes(q))).forEach((m, idx) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td><strong>${U(m.ma||m.marca)}</strong></td><td class="hide-m">${U(m.cu||m.culoare)}</td><td style="color:var(--blue);font-weight:bold;">${U(m.nr||m.nr_inmatriculare)}</td><td>${U(m.ta||m.tara)}</td>`;
+            row.onclick = () => {
+                document.querySelectorAll('.details-row').forEach(r => r.id !== `det-${idx}` && r.classList.add('hidden'));
+                document.getElementById(`det-${idx}`).classList.toggle('hidden');
+            };
+            body.appendChild(row);
+
+            const dRow = document.createElement('tr');
+            dRow.id = `det-${idx}`; dRow.className = 'hidden details-row';
+            dRow.innerHTML = `<td colspan="4"><div class="details-card">
+                <div class="detail-item"><span class="detail-label">MODEL</span><span class="detail-value">${U(m.mo)}</span></div>
+                <div class="detail-item"><span class="detail-label">CULOARE</span><span class="detail-value">${U(m.cu||m.culoare)}</span></div>
+                <div class="detail-item"><span class="detail-label">VIN / SERIE</span><span class="detail-value" style="font-family:monospace">${U(m.vi)}</span></div>
+                <div class="detail-item" style="grid-column: 1/-1"><span class="detail-label">MENȚIUNI</span><span class="detail-value">${U(m.me)}</span></div>
+                <div style="grid-column: 1/-1; text-align:right">
+                    ${currentUser.role === 'admin' ? `<button onclick="delCar('${m.id}')" style="color:red; background:none; border:1px solid red; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:bold">ȘTERGE</button>` : ''}
+                </div>
+            </div></td>`;
+            body.appendChild(dRow);
+        });
+    }
+
+    async function saveCar() {
+        const fields = ['f-ma', 'f-mo', 'f-cu', 'f-nr', 'f-vi', 'f-ta', 'f-me'];
+        const car = { 
+            id: Date.now().toString(), 
+            ma: document.getElementById('f-ma').value, 
+            mo: document.getElementById('f-mo').value, 
+            cu: document.getElementById('f-cu').value, 
+            nr: document.getElementById('f-nr').value, 
+            vi: document.getElementById('f-vi').value, 
+            ta: document.getElementById('f-ta').value, 
+            me: document.getElementById('f-me').value 
+        };
+
+        db.masini.unshift(car);
+        addLog(`ADĂUGAT: ${car.nr}`);
+        await saveDB(); 
+        alert("SALVAT!");
+        fields.forEach(f => document.getElementById(f).value = "");
+        showT('s-tab');
+    }
+
+    async function delCar(id) {
+        if(!confirm("CONFIRMI ȘTERGEREA?")) return;
+        const car = db.masini.find(x => x.id === id);
+        addLog(`ȘTERS: ${car ? car.nr : id}`);
+        db.masini = db.masini.filter(m => m.id !== id);
+        await saveDB(); doSearch();
+    }
+
+    function renderAdmin() {
+        document.getElementById('admin-users-list').innerHTML = db.users.map(u => `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <span>${U(u.u)} (${U(u.role)})</span>
+            ${U(u.u) !== U(currentUser.u) ? `<button onclick="delUser('${u.u}')" style="color:red; border:none; background:none; cursor:pointer;">ȘTERGE</button>` : ''}
+        </div>`).join('');
+
+        document.getElementById('admin-logs-list').innerHTML = db.logs.map(l => `
+            <div class="log-item">
+                <span style="color:#64748b">${l.t}</span> | <strong>${l.u}</strong>: ${l.m}
+            </div>
+        `).join('');
+    }
+
+    async function delUser(un) {
+        if(!confirm(`ȘTERGI UTILIZATORUL ${U(un)}?`)) return;
+        db.users = db.users.filter(x => (x.u !== un && x.user !== un));
+        addLog(`ADMIN A ȘTERS UTILIZATORUL: ${un}`);
+        await saveDB(); renderAdmin();
+    }
+
+    function showT(t) {
+        document.querySelectorAll('.tab-p').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(t).classList.remove('hidden');
+        document.getElementById('btn-' + (t === 'adm-tab' ? 'adm' : t.split('-')[0])).classList.add('active');
+        if(t === 'adm-tab') renderAdmin();
+    }
+
+    function logout() { 
+        localStorage.removeItem('autodb_session'); 
+        location.reload(); 
+    }
+</script>
+</body>
+</html>
