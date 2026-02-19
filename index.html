@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoDB</title>
+    <title>AutoDB Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <style>
         :root { --blue: #1e3a8a; --sky: #3b82f6; --bg: #f1f5f9; --red: #ef4444; }
@@ -12,7 +12,6 @@
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .hidden { display: none !important; }
         
-        /* Majuscule doar pentru conținutul aplicației, NU pentru login */
         #app-content, #app-nav { text-transform: uppercase; }
         #app-content input, #app-content textarea { text-transform: uppercase; }
 
@@ -20,7 +19,7 @@
         .nav-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; }
         .nav-btn.active { background: var(--sky); }
 
-        input, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; font-family: inherit; }
+        input, textarea, select { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; font-family: inherit; }
         .btn-main { background: var(--sky); color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: 600; cursor: pointer; text-transform: uppercase; }
 
         .table-res { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
@@ -28,17 +27,21 @@
         .table-res tr { border-bottom: 1px solid #edf2f7; cursor: pointer; }
         .table-res td { padding: 15px; font-size: 14px; color: #1e293b; }
 
-        .details-row { background: #f8fafc !important; border-bottom: 3px solid var(--sky) !important; }
+        .details-row { border-bottom: 3px solid var(--sky) !important; }
         .details-card { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
         .detail-item { display: flex; flex-direction: column; }
         .detail-label { font-size: 10px; color: #64748b; margin-bottom: 4px; font-weight: 800; }
         .detail-value { font-size: 15px; font-weight: 600; color: #1e293b; }
 
         .log-item { font-family: monospace; font-size: 12px; padding: 8px; border-bottom: 1px solid #eee; text-transform: none; }
-        
-        /* Stil pentru checkbox-ul de login */
         .rem-box { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 10px 0; color: #64748b; cursor: pointer; }
         .rem-box input { width: auto; margin: 0; }
+
+        .bg-white { background-color: #ffffff !important; }
+        .bg-red { background-color: rgba(239, 68, 68, 0.2) !important; }
+        .bg-orange { background-color: rgba(249, 115, 22, 0.2) !important; }
+        .bg-yellow { background-color: rgba(234, 179, 8, 0.2) !important; }
+        .bg-green { background-color: rgba(34, 197, 94, 0.2) !important; }
 
         @media (max-width: 600px) { .hide-m { display: none; } }
     </style>
@@ -61,11 +64,7 @@
         <div id="reg-fields" class="hidden"><input type="text" id="rname" placeholder="Nume Complet"></div>
         <input type="text" id="auser" placeholder="Utilizator">
         <input type="password" id="apass" placeholder="Parolă">
-        
-        <label class="rem-box">
-            <input type="checkbox" id="arem"> Rămâi conectat
-        </label>
-
+        <label class="rem-box"><input type="checkbox" id="arem"> Rămâi conectat</label>
         <button class="btn-main" onclick="handleAuth()">Conectare</button>
         <p onclick="toggleA()" id="aswitch" style="font-size:11px; color:var(--sky); cursor:pointer; margin-top:20px; font-weight:bold; text-transform: uppercase;">Înregistrare cont nou</p>
     </div>
@@ -74,7 +73,7 @@
         <div id="s-tab" class="tab-p">
             <h3>CĂUTARE VEHICUL</h3>
             <div class="card" style="border: 2px solid var(--sky); padding: 10px;">
-                <input type="text" id="q-search" oninput="doSearch()" placeholder="CAUTĂ DUPĂ ORICARE DINTRE CRITERII ..." style="border:none; margin:0;">
+                <input type="text" id="q-search" oninput="doSearch()" placeholder="CAUTĂ DUPĂ ORICARE DINTRE CRITERII ...">
             </div>
             <table class="table-res">
                 <thead><tr><th>MARCĂ</th><th class="hide-m">CULOARE</th><th>NUMĂR</th><th>ȚARĂ</th></tr></thead>
@@ -97,14 +96,8 @@
         </div>
 
         <div id="adm-tab" class="tab-p hidden">
-            <div class="card">
-                <h3>UTILIZATORI</h3>
-                <div id="admin-users-list"></div>
-            </div>
-            <div class="card">
-                <h3>JURNAL ACTIVITATE</h3>
-                <div id="admin-logs-list" style="max-height: 350px; overflow-y: auto; background: #f8fafc; border-radius: 8px;"></div>
-            </div>
+            <div class="card"><h3>UTILIZATORI</h3><div id="admin-users-list"></div></div>
+            <div class="card"><h3>JURNAL ACTIVITATE</h3><div id="admin-logs-list" style="max-height: 350px; overflow-y: auto; background: #f8fafc; border-radius: 8px;"></div></div>
         </div>
     </div>
 </div>
@@ -143,12 +136,11 @@
 
     window.onload = async () => {
         await loadDB();
-        // Verificăm dacă există o sesiune salvată
         const saved = localStorage.getItem('autodb_session');
         if (saved) {
             const sessionData = JSON.parse(saved);
             const found = db.users.find(x => (x.u === sessionData.u || x.user === sessionData.user) && (x.p === sessionData.p || x.pass === sessionData.pass));
-            if (found) login(found, false); // Logare automată fără a re-salva (deja există)
+            if (found) login(found, false);
         }
     };
 
@@ -158,7 +150,6 @@
         const u = document.getElementById('auser').value.trim();
         const p = document.getElementById('apass').value.trim();
         const rem = document.getElementById('arem').checked;
-
         if (!document.getElementById('reg-fields').classList.contains('hidden')) {
             const n = document.getElementById('rname').value.trim();
             db.users.push({ n, u, p, role: (db.users.length === 0 ? 'admin' : 'user') });
@@ -166,19 +157,13 @@
             await saveDB(); alert("CONT CREAT!"); toggleA();
         } else {
             const found = db.users.find(x => (x.u === u || x.user === u) && (x.p === p || x.pass === p));
-            if (found) { 
-                login(found, rem); 
-                addLog("AUTENTIFICARE REUȘITĂ"); 
-                await saveDB(); 
-            } else alert("DATE INCORECTE!");
+            if (found) { login(found, rem); addLog("AUTENTIFICARE REUȘITĂ"); await saveDB(); } else alert("DATE INCORECTE!");
         }
     }
 
     function login(uD, remember) {
         currentUser = uD;
-        if (remember) {
-            localStorage.setItem('autodb_session', JSON.stringify(uD));
-        }
+        if (remember) localStorage.setItem('autodb_session', JSON.stringify(uD));
         document.getElementById('auth-box').classList.add('hidden');
         document.getElementById('app-nav').classList.remove('hidden');
         document.getElementById('app-content').classList.remove('hidden');
@@ -193,6 +178,7 @@
 
         db.masini.filter(m => Object.values(m).some(v => v && v.toString().toLowerCase().includes(q))).forEach((m, idx) => {
             const row = document.createElement('tr');
+            row.className = `bg-${m.bg || 'white'}`;
             row.innerHTML = `<td><strong>${U(m.ma||m.marca)}</strong></td><td class="hide-m">${U(m.cu||m.culoare)}</td><td style="color:var(--blue);font-weight:bold;">${U(m.nr||m.nr_inmatriculare)}</td><td>${U(m.ta||m.tara)}</td>`;
             row.onclick = () => {
                 document.querySelectorAll('.details-row').forEach(r => r.id !== `det-${idx}` && r.classList.add('hidden'));
@@ -201,37 +187,67 @@
             body.appendChild(row);
 
             const dRow = document.createElement('tr');
-            dRow.id = `det-${idx}`; dRow.className = 'hidden details-row';
+            dRow.id = `det-${idx}`; dRow.className = `hidden details-row bg-${m.bg || 'white'}`;
             dRow.innerHTML = `<td colspan="4"><div class="details-card">
                 <div class="detail-item"><span class="detail-label">MODEL</span><span class="detail-value">${U(m.mo)}</span></div>
                 <div class="detail-item"><span class="detail-label">CULOARE</span><span class="detail-value">${U(m.cu||m.culoare)}</span></div>
                 <div class="detail-item"><span class="detail-label">VIN / SERIE</span><span class="detail-value" style="font-family:monospace">${U(m.vi)}</span></div>
                 <div class="detail-item" style="grid-column: 1/-1"><span class="detail-label">MENȚIUNI</span><span class="detail-value">${U(m.me)}</span></div>
-                <div style="grid-column: 1/-1; text-align:right">
-                    ${currentUser.role === 'admin' ? `<button onclick="delCar('${m.id}')" style="color:red; background:none; border:1px solid red; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:bold">ȘTERGE</button>` : ''}
-                </div>
+                
+                ${currentUser.role === 'admin' ? `
+                <div style="grid-column: 1/-1; background: rgba(255,255,255,0.6); padding: 15px; border-radius: 8px; border: 2px solid var(--blue); margin-top: 10px;">
+                    <span class="detail-label" style="color:var(--blue)">MOD ADMIN: MODIFICARE COMPLETĂ DATE</span>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <input type="text" id="e-ma-${idx}" value="${m.ma||''}" placeholder="MARCĂ">
+                        <input type="text" id="e-mo-${idx}" value="${m.mo||''}" placeholder="MODEL">
+                        <input type="text" id="e-cu-${idx}" value="${m.cu||''}" placeholder="CULOARE TEXT">
+                        <input type="text" id="e-nr-${idx}" value="${m.nr||''}" placeholder="NR. ÎNMATRICULARE">
+                        <input type="text" id="e-vi-${idx}" value="${m.vi||''}" placeholder="VIN">
+                        <input type="text" id="e-ta-${idx}" value="${m.ta||''}" placeholder="ȚARĂ">
+                        <select id="e-bg-${idx}" style="grid-column: 1/-1">
+                            <option value="white" ${m.bg==='white'?'selected':''}>FOND: ALB</option>
+                            <option value="red" ${m.bg==='red'?'selected':''}>FOND: ROȘU</option>
+                            <option value="orange" ${m.bg==='orange'?'selected':''}>FOND: PORTOCALIU</option>
+                            <option value="yellow" ${m.bg==='yellow'?'selected':''}>FOND: GALBEN</option>
+                            <option value="green" ${m.bg==='green'?'selected':''}>FOND: VERDE</option>
+                        </select>
+                    </div>
+                    <textarea id="e-me-${idx}" placeholder="MENȚIUNI">${m.me || ''}</textarea>
+                    <div style="display:flex; gap: 10px; margin-top: 8px;">
+                        <button onclick="updateCar('${m.id}', ${idx})" style="flex:2; background:var(--blue); color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">ACTUALIZEAZĂ DATELE</button>
+                        <button onclick="delCar('${m.id}')" style="flex:1; background:var(--red); color:white; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">ȘTERGE</button>
+                    </div>
+                </div>` : ''}
             </div></td>`;
             body.appendChild(dRow);
         });
     }
 
+    async function updateCar(id, idx) {
+        const car = db.masini.find(x => x.id === id);
+        if(car) {
+            car.ma = document.getElementById(`e-ma-${idx}`).value;
+            car.mo = document.getElementById(`e-mo-${idx}`).value;
+            car.cu = document.getElementById(`e-cu-${idx}`).value;
+            car.nr = document.getElementById(`e-nr-${idx}`).value;
+            car.vi = document.getElementById(`e-vi-${idx}`).value;
+            car.ta = document.getElementById(`e-ta-${idx}`).value;
+            car.me = document.getElementById(`e-me-${idx}`).value;
+            car.bg = document.getElementById(`e-bg-${idx}`).value;
+            
+            addLog(`UPDATE COMPLET: ${car.nr}`);
+            await saveDB();
+            alert("DATE ACTUALIZATE!");
+            doSearch();
+        }
+    }
+
     async function saveCar() {
         const fields = ['f-ma', 'f-mo', 'f-cu', 'f-nr', 'f-vi', 'f-ta', 'f-me'];
-        const car = { 
-            id: Date.now().toString(), 
-            ma: document.getElementById('f-ma').value, 
-            mo: document.getElementById('f-mo').value, 
-            cu: document.getElementById('f-cu').value, 
-            nr: document.getElementById('f-nr').value, 
-            vi: document.getElementById('f-vi').value, 
-            ta: document.getElementById('f-ta').value, 
-            me: document.getElementById('f-me').value 
-        };
-
+        const car = { id: Date.now().toString(), ma: document.getElementById('f-ma').value, mo: document.getElementById('f-mo').value, cu: document.getElementById('f-cu').value, nr: document.getElementById('f-nr').value, vi: document.getElementById('f-vi').value, ta: document.getElementById('f-ta').value, me: document.getElementById('f-me').value, bg: 'white' };
         db.masini.unshift(car);
         addLog(`ADĂUGAT: ${car.nr}`);
-        await saveDB(); 
-        alert("SALVAT!");
+        await saveDB(); alert("SALVAT!");
         fields.forEach(f => document.getElementById(f).value = "");
         showT('s-tab');
     }
@@ -245,16 +261,8 @@
     }
 
     function renderAdmin() {
-        document.getElementById('admin-users-list').innerHTML = db.users.map(u => `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <span>${U(u.u)} (${U(u.role)})</span>
-            ${U(u.u) !== U(currentUser.u) ? `<button onclick="delUser('${u.u}')" style="color:red; border:none; background:none; cursor:pointer;">ȘTERGE</button>` : ''}
-        </div>`).join('');
-
-        document.getElementById('admin-logs-list').innerHTML = db.logs.map(l => `
-            <div class="log-item">
-                <span style="color:#64748b">${l.t}</span> | <strong>${l.u}</strong>: ${l.m}
-            </div>
-        `).join('');
+        document.getElementById('admin-users-list').innerHTML = db.users.map(u => `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;"><span>${U(u.u)} (${U(u.role)})</span>${U(u.u) !== U(currentUser.u) ? `<button onclick="delUser('${u.u}')" style="color:red; border:none; background:none; cursor:pointer;">ȘTERGE</button>` : ''}</div>`).join('');
+        document.getElementById('admin-logs-list').innerHTML = db.logs.map(l => `<div class="log-item"><span style="color:#64748b">${l.t}</span> | <strong>${l.u}</strong>: ${l.m}</div>`).join('');
     }
 
     async function delUser(un) {
@@ -272,11 +280,7 @@
         if(t === 'adm-tab') renderAdmin();
     }
 
-    function logout() { 
-        localStorage.removeItem('autodb_session'); 
-        location.reload(); 
-    }
+    function logout() { localStorage.removeItem('autodb_session'); location.reload(); }
 </script>
 </body>
-
 </html>
